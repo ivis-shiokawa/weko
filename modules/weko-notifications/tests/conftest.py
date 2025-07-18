@@ -42,6 +42,7 @@ from invenio_pidstore import InvenioPIDStore
 from invenio_records import InvenioRecords
 from invenio_records_ui import InvenioRecordsUI
 from invenio_search import InvenioSearch, current_search_client
+from invenio_oauth2server import InvenioOAuth2Server
 
 from weko_index_tree import WekoIndexTree
 from weko_index_tree.models import Index
@@ -103,6 +104,7 @@ def base_app(instance_path):
     InvenioRecords(app_)
     InvenioRecordsUI(app_)
     InvenioSearch(app_)
+    InvenioOAuth2Server(app_)
     WekoDeposit(app_)
     WekoIndexer(app_)
     WekoIndexTree(app_)

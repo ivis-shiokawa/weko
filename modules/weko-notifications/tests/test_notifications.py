@@ -99,6 +99,62 @@ class TestNotifications:
         assert notification.payload == after_approval
         assert notification._is_validated == True
 
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_validate_success -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+    def test_validate_success(self):
+        notification = Notification()
+        notification.activity_type = ["Announce"]
+        notification.origin = {
+            "id": "urn:uuid:123e4567-e89b-12d3-a456-426614174001",
+            "type": "Service",
+            "inbox": "https://example.org/inbox"
+        }
+        notification.target = {
+            "id": "urn:uuid:123e4567-e89b-12d3-a456-426614174002",
+            "type": "Service",
+            "inbox": "https://example.org/inbox2"
+        }
+        notification.object = {
+            "id": "urn:uuid:123e4567-e89b-12d3-a456-426614174003"
+        }
+        notification.actor = {
+            "id": "urn:uuid:123e4567-e89b-12d3-a456-426614174004",
+            "type": "Person",
+            "name": "Test Actor"
+        }
+        notification.context = {
+            "id": "urn:uuid:123e4567-e89b-12d3-a456-426614174005"
+        }
+        notification.in_reply_to = None
+        notification.payload["id"] = "urn:uuid:123e4567-e89b-12d3-a456-426614174000"
+        notification.payload["@context"] = [
+            "https://www.w3.org/ns/activitystreams",
+            "https://purl.org/coar/notify"
+        ]
+        result = notification.validate()
+        assert result is notification
+        assert notification._is_validated is True
+
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_send -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+    @pytest.mark.parametrize("patch_send,client_type,expected_exception,expected_result", [
+        (True, "valid", None, "dummy_id"),
+        (False, "invalid", TypeError, None),
+    ])
+    def test_send(self, patch_send, client_type, expected_exception, expected_result):
+        from weko_notifications.client import NotificationClient
+        notification = Notification()
+        if client_type == "valid":
+            client = NotificationClient(inbox="https://example.org/inbox")
+            if patch_send:
+                client.send = lambda n: "dummy_id"
+        else:
+            client = object()
+        if expected_exception:
+            with pytest.raises(expected_exception):
+                notification.send(client)
+        else:
+            result = notification.send(client)
+            assert result == expected_result
+    
     # def load(self, payload):
     # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_load -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
     def test_load(self, json_notifications):
@@ -199,3 +255,69 @@ class TestNotifications:
         assert notification.activity_type == ActivityType.ACKNOWLEDGE_AND_REJECT.value
         assert notification.payload == after_rejection
         assert notification._is_validated == True
+
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_create_request_delete_approval -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+    def test_create_request_delete_approval(self, app):
+        notification = Notification.create_request_delete_approval(
+            target_id=1,
+            object_id=2000001,
+            actor_id=2,
+            context_id=123,
+            object_name="Test Object",
+            actor_name="Test Actor"
+        )
+        assert notification.payload["type"] == ActivityType.OFFER_ENDORSE.deletion_value
+        assert notification._is_validated is True
+
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_create_item_delete_approved -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+    def test_create_item_delete_approved(self, app):
+        notification = Notification.create_item_delete_approved(
+            target_id=1,
+            object_id=2000001,
+            actor_id=2,
+            context_id=123,
+            object_name="Test Object",
+            ietf_cite_as="https://doi.org/10.1234/0002000001",
+            actor_name="Test Actor"
+        )
+        assert notification.payload["type"] == ActivityType.ANNOUNCE_ENDORSE.deletion_value
+        assert notification._is_validated is True
+
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_create_item_delete_rejected -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+    def test_create_item_delete_rejected(self, app):
+        notification = Notification.create_item_delete_rejected(
+            target_id=1,
+            object_id=2000001,
+            actor_id=2,
+            context_id=123,
+            object_name="Test Object",
+            ietf_cite_as="https://doi.org/10.1234/0002000001",
+            actor_name="Test Actor"
+        )
+        assert notification.payload["type"] == ActivityType.ACKNOWLEDGE_AND_REJECT.deletion_value
+        assert notification._is_validated is True
+
+    # .tox/c1/bin/pytest --cov=weko_notifications tests/test_notifications.py::TestNotifications::test_set_all_in_reply_to_direct -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace    
+    def test_set_all_in_reply_to_direct(self, app):
+        notification = Notification()
+        import weko_notifications.notifications as notifications_mod
+        notifications_mod.url_for = lambda endpoint, **kwargs: f"https://example.org/{endpoint}"
+        notifications_mod.inbox_url = lambda **kwargs: "https://example.org/inbox"
+        notifications_mod.user_uri = lambda user_id, **kwargs: f"https://example.org/user/{user_id}"
+
+        notification.create = lambda: notification
+        notification.set_type = lambda x: None
+        notification.set_origin = lambda **kwargs: None
+        notification.set_target = lambda **kwargs: None
+        notification.set_object = lambda **kwargs: None
+        notification.set_actor = lambda **kwargs: None
+        notification.set_context = lambda **kwargs: None
+
+        notification.set_all(
+            activity_type=["Announce"],
+            target_id=1,
+            object_id=2,
+            actor_id=3,
+            in_reply_to="urn:uuid:direct-test"
+        )
+        assert notification.in_reply_to == "urn:uuid:direct-test"

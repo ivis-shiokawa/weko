@@ -176,3 +176,26 @@ def test_notification_schema_validation(json_notifications):
     assert "id" in ex.value.messages
     assert "updated" in ex.value.messages
     assert "type" in ex.value.messages
+
+# .tox/c1/bin/pytest --cov=weko_notifications tests/test_schema.py::test_validate_urn_uuid_value_error -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+def test_validate_urn_uuid_value_error():
+    from weko_notifications.schema import validate_urn_uuid
+    invalid_urn = "urn:uuid:not-a-valid-uuid"
+    import marshmallow
+    with pytest.raises(marshmallow.ValidationError) as excinfo:
+        validate_urn_uuid(invalid_urn)
+    assert "Invalid URN UUID format." in str(excinfo.value)
+
+# .tox/c1/bin/pytest --cov=weko_notifications tests/test_schema.py::test_validate_rfc3339_no_colon -v -vv -s --cov-branch --cov-report=term --cov-report=html --basetemp=/code/modules/weko-notifications/.tox/c1/tmp --full-trace
+def test_validate_rfc3339_no_colon():
+    from weko_notifications.schema import validate_rfc3339
+    valid = "2025-01-23T04:57:18+0000"
+    valid_z = "2025-01-23T04:57:18Z"
+    invalid = "2025-01-23T04:57:18"
+
+    assert validate_rfc3339(valid) is None
+    assert validate_rfc3339(valid_z) is None
+
+    import marshmallow
+    with pytest.raises(marshmallow.ValidationError):
+        validate_rfc3339(invalid)
